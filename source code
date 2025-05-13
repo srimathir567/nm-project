@@ -1,0 +1,72 @@
+# 1. Import Libraries
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.preprocessing import LabelEncoder, StandardScaler
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
+import joblib
+
+# 2. Upload and Load Dataset
+from google.colab import files
+uploaded = files.upload()  # Upload the CSV file manually
+
+# Replace this with the actual file name after upload
+df = pd.read_csv(r"/content/synthetic_air_quality_data (2).csv")  # Or use the correct uploaded filename
+df
+# 3. Exploratory Data Analysis (Optional)
+print(df.head())
+print(df.info())
+print(df.describe())
+
+# 4. Data Preprocessing
+df['timestamp'] = pd.to_datetime(df['timestamp'])
+df['hour'] = df['timestamp'].dt.hour
+df['day'] = df['timestamp'].dt.dayofweek
+df.drop(columns=["timestamp"], inplace=True)
+
+# Encode target label
+le = LabelEncoder()
+df['air_quality_level_encoded'] = le.fit_transform(df['air_quality_level'])
+df.drop(columns=["air_quality_level"], inplace=True)
+
+# 5. Feature and Target Split
+X = df.drop(columns=["air_quality_level_encoded"])
+y = df["air_quality_level_encoded"]
+
+# 6. Train-Test Split
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# 7. Feature Scaling
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)
+
+# 8. Train Model
+model = RandomForestClassifier(n_estimators=100, random_state=42)
+model.fit(X_train_scaled, y_train)
+
+# 9. Evaluate Model
+y_pred = model.predict(X_test_scaled)
+print("Classification Report:\n", classification_report(y_test, y_pred))
+print("Confusion Matrix:\n", confusion_matrix(y_test, y_pred))
+print("Accuracy Score:", accuracy_score(y_test, y_pred))
+
+# 10. Save Model and Preprocessors
+joblib.dump(model, "rf_model.pkl")
+joblib.dump(scaler, "scaler.pkl")
+joblib.dump(le, "label_encoder.pkl")
+
+# 11. Plot Feature Importances
+importances = model.feature_importances_
+features = np.array(X.columns)
+indices = np.argsort(importances)[::-1]
+
+plt.figure(figsize=(10, 6))
+sns.barplot(x=importances[indices], y=features[indices])
+plt.title("Feature Importances")
+plt.tight_layout()
+plt.savefig("feature_importance.png")
+plt.show()
